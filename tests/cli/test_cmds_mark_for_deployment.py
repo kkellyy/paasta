@@ -71,18 +71,15 @@ def test_mark_for_deployment_happy(mock_create_remote_refs, mock__log):
 @patch('paasta_tools.remote_git.create_remote_refs', autospec=True)
 def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log):
     mock_create_remote_refs.side_effect = Exception('something bad')
-    actual = mark_for_deployment.mark_for_deployment(
-        git_url='fake_git_url',
-        deploy_group='fake_deploy_group',
-        service='fake_service',
-        commit='fake_commit',
-    )
+    with patch('time.sleep', autospec=True):
+        actual = mark_for_deployment.mark_for_deployment(
+            git_url='fake_git_url',
+            deploy_group='fake_deploy_group',
+            service='fake_service',
+            commit='fake_commit',
+        )
     assert actual == 1
-    mock_create_remote_refs.assert_called_once_with(
-        git_url='fake_git_url',
-        ref_mutator=ANY,
-        force=True,
-    )
+    assert mock_create_remote_refs.call_count == 3
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
@@ -103,7 +100,8 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     mock_mark_for_deployment.return_value = 0
     mock_wait_for_deployment.side_effect = TimeoutError
     mock_get_currently_deployed_sha.return_value = "old-sha"
-    assert mark_for_deployment.paasta_mark_for_deployment(fake_args_rollback) == 1
+    with patch('time.sleep', autospec=True):
+        assert mark_for_deployment.paasta_mark_for_deployment(fake_args_rollback) == 1
     mock_mark_for_deployment.assert_any_call(
         service='test_service',
         deploy_group='test_deploy_group',
